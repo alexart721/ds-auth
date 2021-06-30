@@ -88,8 +88,11 @@ const checkToken = async (req: Request, res: Response): Promise<void> => {
         res.status(401).send({message: 'You need to log in again'});
       } else {
         let _id;
+        let userRoles;
         try {
-          _id = (jwt.verify(token, SECRET_KEY as string) as JwtPayload)._id;
+          const jwtValue = (jwt.verify(token, SECRET_KEY as string) as JwtPayload);
+          _id = jwtValue._id;
+          userRoles = jwtValue.roles;
         } catch (e) {
           if (e.message === 'invalid token') {
             res.status(400).send({message: 'Invalid token'});
@@ -98,21 +101,19 @@ const checkToken = async (req: Request, res: Response): Promise<void> => {
           res.status(401).send({message: 'Unauthorized'});
           return;
         }
-        
-        const user = await Users.findById(_id).exec();
         switch (roles) {
           case 'Admin':
-            if (user?.roles === 'Admin') {
+            if (userRoles === 'Admin') {
               res.status(200).send({message: 'Approved'});
             } else {
-              res.status(401).send({message: 'Invalid token for access'});
+              res.status(403).send({message: 'Invalid token for access'});
             }
           break;
           case 'User':
-            if (user?.roles === 'User' || user?.roles === 'Admin') {
+            if (userRoles === 'User' || userRoles === 'Admin') {
               res.status(200).send({message: 'Approved'});
             } else {
-              res.status(401).send({message: 'Invalid token for access'});
+              res.status(403).send({message: 'Invalid token for access'});
             }
           break;
           default:
