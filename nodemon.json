@@ -1,0 +1,4 @@
+{
+  "ext": "ts,js,json",
+  "exec": "node -r dotenv/config -r ts-node/register ./index.ts"
+}
