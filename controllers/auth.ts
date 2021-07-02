@@ -18,7 +18,7 @@ const login = async (req: Request, res: Response): Promise<void> => {
       } else if (user.status === 'Banned') {
         res.status(403).send({message: 'You need to re-register'});
       } else {
-        const token = jwt.sign({_id: user._id, roles: user.roles}, SECRET_KEY as string, {expiresIn: '3h'});
+        const token = jwt.sign({_id: user._id}, SECRET_KEY as string, {expiresIn: '3h'});
         res.status(200).send({accessToken: token});
       }
     }
@@ -59,7 +59,7 @@ const register = async (req: Request, res: Response): Promise<void> => {
         const hashPassword = await bcrypt.hash(password, 10);
         const updatedUser = await Users.findByIdAndUpdate(user?._id, { password: hashPassword, status: 'Registered' }, { new: true });
         if (SECRET_KEY) {
-          const accessToken = jwt.sign({ _id: updatedUser?._id, roles: updatedUser?.roles }, SECRET_KEY, { expiresIn: '1h' });
+          const accessToken = jwt.sign({ _id: updatedUser?._id}, SECRET_KEY, { expiresIn: '1h' });
           res.status(200).send({ accessToken });
         } else {
           throw new Error('Unable to register user');
@@ -92,7 +92,7 @@ const checkToken = async (req: Request, res: Response): Promise<void> => {
         try {
           const jwtValue = (jwt.verify(token, SECRET_KEY as string) as JwtPayload);
           _id = jwtValue._id;
-          userRoles = jwtValue.roles;
+          userRoles = (await Users.findById(_id).exec())?.roles;
         } catch (e) {
           if (e.message === 'invalid token') {
             res.status(400).send({message: 'Invalid token'});
@@ -104,14 +104,14 @@ const checkToken = async (req: Request, res: Response): Promise<void> => {
         switch (roles) {
           case 'Admin':
             if (userRoles === 'Admin') {
-              res.status(200).send({message: 'Approved'});
+              res.status(200).send({message: 'Approved', id: _id});
             } else {
               res.status(403).send({message: 'Invalid token for access'});
             }
           break;
           case 'User':
             if (userRoles === 'User' || userRoles === 'Admin') {
-              res.status(200).send({message: 'Approved'});
+              res.status(200).send({message: 'Approved', id: _id});
             } else {
               res.status(403).send({message: 'Invalid token for access'});
             }
