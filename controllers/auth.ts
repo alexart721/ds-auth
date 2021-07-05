@@ -52,7 +52,8 @@ const logout = async (req: Request, res: Response): Promise<void> => {
 const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, token } = req.body;
-    const user = await Users.findOne({ where: { email } });
+    const user = await Users.findOne({ email });
+    console.log(user);
     if (user?.status === 'Approved') {
       try {
         if (password === '') throw new Error();
@@ -65,6 +66,10 @@ const register = async (req: Request, res: Response): Promise<void> => {
         const updatedUser = await Users.findByIdAndUpdate(user?._id, { password: hashPassword, status: 'Registered' }, { new: true });
         if (SECRET_KEY) {
           const accessToken = jwt.sign({ _id: updatedUser?._id, use: 'standard'}, SECRET_KEY, { expiresIn: '1h' });
+          const timeToExpire = tokenPayload.exp || 0 - Math.floor(Date.now() / 1000);
+        if (timeToExpire > 0) {
+          req.app.locals.redisClient.setex(`blacklist_${token}`, timeToExpire, 'true');
+        }
           res.status(200).send({ accessToken });
         } else {
           throw new Error('Unable to register user');
