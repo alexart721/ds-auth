@@ -18,7 +18,7 @@ const login = async (req: Request, res: Response): Promise<void> => {
       } else if (user.status === 'Banned') {
         res.status(403).send({message: 'You need to re-register'});
       } else {
-        const token = jwt.sign({_id: user._id}, SECRET_KEY as string, {expiresIn: '3h'});
+        const token = jwt.sign({_id: user._id, use: 'standard'}, SECRET_KEY as string, {expiresIn: '3h'});
         res.status(200).send({accessToken: token});
       }
     }
@@ -51,15 +51,20 @@ const logout = async (req: Request, res: Response): Promise<void> => {
 // Register a user's password
 const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password } = req.body;
+    const { email, password, token } = req.body;
     const user = await Users.findOne({ where: { email } });
     if (user?.status === 'Approved') {
       try {
         if (password === '') throw new Error();
+        const tokenPayload = (jwt.verify(token, SECRET_KEY as string) as JwtPayload);
+        if (tokenPayload.use !== 'register') {
+          res.status(400).send({message: 'Invalid token for registering.'});
+          return;
+        }
         const hashPassword = await bcrypt.hash(password, 10);
         const updatedUser = await Users.findByIdAndUpdate(user?._id, { password: hashPassword, status: 'Registered' }, { new: true });
         if (SECRET_KEY) {
-          const accessToken = jwt.sign({ _id: updatedUser?._id}, SECRET_KEY, { expiresIn: '1h' });
+          const accessToken = jwt.sign({ _id: updatedUser?._id, use: 'standard'}, SECRET_KEY, { expiresIn: '1h' });
           res.status(200).send({ accessToken });
         } else {
           throw new Error('Unable to register user');
@@ -92,7 +97,11 @@ const checkToken = async (req: Request, res: Response): Promise<void> => {
         try {
           const jwtValue = (jwt.verify(token, SECRET_KEY as string) as JwtPayload);
           _id = jwtValue._id;
-          userRoles = (await Users.findById(_id).exec())?.roles;
+          if (jwtValue.use === 'register') {
+            userRoles = 'Registering';
+          } else {
+            userRoles = (await Users.findById(_id).exec())?.roles;
+          }
         } catch (e) {
           if (e.message === 'invalid token') {
             res.status(400).send({message: 'Invalid token'});
@@ -116,6 +125,8 @@ const checkToken = async (req: Request, res: Response): Promise<void> => {
               res.status(403).send({message: 'Invalid token for access'});
             }
           break;
+          case 'Registering':
+            res.status(200).send({message: 'Approved'});
           default:
             res.status(400).send({message: 'Invalid role'});
         }
@@ -124,6 +135,35 @@ const checkToken = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const generateRegisterToken = async (req: Request, res: Response): Promise<void> => {
+  if (!req.headers['authorization']) {
+    res.status(400).send({message: 'Missing authorization header'});
+    return;
+  }
+  const token = req.headers['authorization'].split(' ')[1];
+  const { id } = req.body;
+  try {
+    const payload = jwt.verify(token, SECRET_KEY as string) as JwtPayload;
+    const user = (await Users.findById(payload._id).exec());
+    const userRoles = user?.roles;
+    if (userRoles !== 'Admin') {
+      res.status(403).send({message: 'You do not have permission to do this'});
+      return;
+    }
+  } catch (e) {
+    res.status(401).send({message: 'You are not authorized for this'});
+  }
+
+  const newUser = await Users.findById(id).exec();
+  if (!newUser) {
+    res.status(400).send({message: 'Unknown user'});
+    return;
+  }
+
+  const newToken = jwt.sign({_id: id, use: 'register'}, SECRET_KEY as string, {expiresIn: '24h'});
+  res.status(200).send({registerToken: newToken});
+};
+
 export default {
-  login, logout, register, checkToken
+  login, logout, register, checkToken, generateRegisterToken
 };
