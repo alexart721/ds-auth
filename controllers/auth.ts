@@ -119,7 +119,7 @@ const checkToken = async (req: Request, res: Response): Promise<void> => {
           default:
             res.status(400).send({message: 'Invalid role'});
         }
-      } 
+      }
     });
   }
 };
