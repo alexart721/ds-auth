@@ -53,7 +53,6 @@ const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, token } = req.body;
     const user = await Users.findOne({ email });
-    console.log(user);
     if (user?.status === 'Approved') {
       try {
         if (password === '') throw new Error();
