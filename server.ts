@@ -5,7 +5,6 @@ import router from './router';
 import bootRedis from './redisDb';
 
 const bootServer = (PORT: number): http.Server => {
-
   const app = express();
   app.locals.redisClient = bootRedis(process.env.REDIS_URL as string);
 
