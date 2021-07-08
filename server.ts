@@ -13,7 +13,6 @@ const bootServer = (PORT: number): http.Server => {
   app.use(router);
 
   app.use((req: Request, res: Response) => {
-    console.log(`Request made to ${req.url}`);
     res.status(404).send(`Page not found on auth [${req.url}]`);
   });
 

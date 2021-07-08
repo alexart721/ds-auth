@@ -7,6 +7,11 @@
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
         "project": "ds-auth/tsconfig.json"
+        "ecmaFeatures": {
+            "jsx": true
+        },
+        "ecmaVersion": 12,
+        "sourceType": "module"
     },
     "rules": {
         "no-console":"off",
