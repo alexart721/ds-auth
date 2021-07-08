@@ -1,4 +1,3 @@
-
 import bootDb from './db';
 import bootServer from './server';
 

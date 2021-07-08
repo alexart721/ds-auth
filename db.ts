@@ -1,6 +1,7 @@
 import { connect, Mongoose } from 'mongoose';
 
 const bootDb = async (url: string, DB_NAME: string): Promise<Mongoose | undefined> => {
+  console.log(url);
   try {
     const connection = await connect(url, {
       useNewUrlParser: true,
